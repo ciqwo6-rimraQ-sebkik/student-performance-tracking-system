@@ -45,7 +45,7 @@ def highlight_risk(val):
         return "background-color: #d4edda"
     return ""
 
-st.dataframe(df.style.applymap(highlight_risk, subset=["Risk Level"]))
+st.dataframe(df.style.map(highlight_risk, subset=["Risk Level"]))
 
 # رسم بياني
 fig, ax = plt.subplots()
