@@ -12,7 +12,6 @@ MU_LOGO = "logo.png"
 # --- CSS لتنسيق احترافي ---
 st.markdown("""
 <style>
-/* خطوط واتجاه الصفحة */
 html, body {
     font-family: 'Tajawal', sans-serif;
     text-align: right;
@@ -60,18 +59,19 @@ html, body {
     margin-bottom: 20px;
 }
 
-/* الخانات للطالب */
+/* خانات الطالب */
 .metric-box {
     background-color: #f2f6fb;
     border: 1px solid #004a87;
     border-radius: 10px;
     padding: 15px;
     text-align: center;
+    margin-bottom: 10px;
 }
 
-/* ألوان رسمية */
-.success {color: #004a87; font-weight: bold;}
-.danger {color: #b00020; font-weight: bold;}
+/* ألوان الرسم البياني */
+.stable {color: #004a87; font-weight: bold;}  /* أزرق */
+.danger {color: #b7934b; font-weight: bold;} /* ذهبي */
 </style>
 """, unsafe_allow_html=True)
 
@@ -147,7 +147,7 @@ else:
 
     # 👨‍🏫 الدكتور
     if st.session_state['role'] == "teacher":
-        st.markdown("<h3 class='success'>تسجيل عضو هيئة تدريس</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='stable'>تسجيل عضو هيئة تدريس</h3>", unsafe_allow_html=True)
         file = st.file_uploader("ارفع ملف Excel", type=['xlsx'])
 
         if file:
@@ -164,7 +164,15 @@ else:
 
                 tab1, tab2 = st.tabs(["📊 الرسم البياني", "📋 الجدول"])
                 with tab1:
-                    fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status")
+                    fig = px.scatter(
+                        df,
+                        x="Attendance",
+                        y="Grade",
+                        color="AI_Status",
+                        color_discrete_map={"مستقر": "#004a87", "خطر": "#b7934b"},
+                        hover_data=['Name','Grade','Attendance','Success_Probability']
+                    )
+                    fig.update_layout(title="تحليل أداء الطلاب", xaxis_title="الحضور", yaxis_title="الدرجة")
                     st.plotly_chart(fig, use_container_width=True)
                 with tab2:
                     st.dataframe(df)
@@ -193,4 +201,3 @@ else:
         else:
             st.info("بانتظار رفع البيانات من الدكتور")
     st.markdown("</div>", unsafe_allow_html=True)
-	◦	
