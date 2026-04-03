@@ -6,8 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 # 1. إعدادات الصفحة العامة
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
-# --- شعار الجامعة + نص رسمي تحت الشعار ---
-MU_LOGO = "logo.png"  # ضع مسار الشعار الصحيح هنا
+# --- شعار الجامعة من GitHub + نص رسمي تحت الشعار ---
+MU_LOGO = "https://raw.githubusercontent.com/USERNAME/REPO/main/logo.png"  # ضع رابط الصورة المباشر هنا
 
 def show_university_logo():
     st.markdown(f"""
@@ -62,7 +62,7 @@ def login_page():
 
 # --- واجهة المعلم ---
 def teacher_dashboard():
-    show_university_logo()  # الشعار + النصوص
+    show_university_logo()
     st.title("👨‍🏫 لوحة تحكم المعلم (التحليل الذكي)")
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
@@ -96,7 +96,7 @@ def teacher_dashboard():
 
 # --- واجهة الطالب ---
 def student_dashboard():
-    show_university_logo()  # الشعار + النصوص
+    show_university_logo()
     st.title("🎓 ملف الطالب الشخصي")
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
