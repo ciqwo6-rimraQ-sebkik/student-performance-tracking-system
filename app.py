@@ -1,57 +1,140 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
+from sklearn.ensemble import RandomForestClassifier
 
-# إعداد الصفحة
-st.set_page_config(page_title="نظام متابعة أداء الطلاب", layout="wide")
+# 1. إعدادات الصفحة العامة
+st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
-st.markdown("<h1 style='text-align: center; color: #1f4e79;'>نظام متابعة أداء الطلاب</h1>", unsafe_allow_html=True)
-st.markdown("---")
+# --- قاعدة بيانات مستخدمين تجريبية ---
+# المعلم: اسم المستخدم admin / كلمة السر 123
+# الطالب: اسم المستخدم هو رقمه في ملف الإكسل (مثلاً 101) / كلمة السر std
+users_db = {
+    "admin": {"password": "123", "role": "teacher"},
+    "101": {"password": "std", "role": "student"},
+    "102": {"password": "std", "role": "student"},
+    "103": {"password": "std", "role": "student"}
+}
 
-# تحميل البيانات
-df = pd.read_excel("students.xlsx")
+# --- دالة تدريب الذكاء الاصطناعي ---
+def train_ai_model(df):
+    try:
+        # تجهيز البيانات: الحضور والدرجات كمدخلات
+        X = df[['Grade', 'Attendance']]
+        # الهدف: التنبؤ بالنجاح (درجة > 60)
+        y = (df['Grade'] >= 60).astype(int)
+        
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        model.fit(X, y)
+        
+        # إضافة التنبؤات للملف
+        df['Success_Probability'] = model.predict_proba(X)[:, 1] * 100
+        df['AI_Status'] = ["ناجح متوقع" if p >= 50 else "خطر تعثر" for p in df['Success_Probability']]
+        return df, True
+    except:
+        return df, False
 
-# حساب مستوى الخطر
-def calculate_risk(row):
-    if row["Grade"] < 60 or row["Attendance"] < 60:
-        return "High"
-    elif row["Grade"] < 75:
-        return "Medium"
+# --- واجهة تسجيل الدخول ---
+def login_page():
+    st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_input=True)
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        with st.form("login_form"):
+            user = st.text_input("اسم المستخدم / الرقم الجامعي")
+            pwd = st.text_input("كلمة المرور", type="password")
+            submit = st.form_submit_button("دخول")
+            
+            if submit:
+                if user in users_db and users_db[user]["password"] == pwd:
+                    st.session_state['logged_in'] = True
+                    st.session_state['user_id'] = user
+                    st.session_state['role'] = users_db[user]["role"]
+                    st.rerun()
+                else:
+                    st.error("بيانات الدخول غير صحيحة")
+
+# --- واجهة المعلم ---
+def teacher_dashboard():
+    st.title("👨‍🏫 لوحة تحكم المعلم (التحليل الذكي)")
+    st.sidebar.button("تسجيل الخروج", on_click=lambda: st.session_state.update({"logged_in": False}))
+    
+    file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx', 'csv'])
+    
+    if file:
+        df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+        
+        # التأكد من وجود الأعمدة المطلوبة
+        if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
+            # تشغيل الـ AI
+            df, success = train_ai_model(df)
+            st.session_state['data'] = df # حفظ البيانات ليراها الطالب
+            
+            # إحصائيات علوية
+            c1, c2, c3 = st.columns(3)
+            c1.metric("إجمالي الطلاب", len(df))
+            c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
+            c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
+
+            # تبويبات العرض
+            t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
+            with t1:
+                fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
+                                 size="Success_Probability", hover_name="Name",
+                                 title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي")
+                st.plotly_chart(fig, use_container_width=True)
+            with t2:
+                st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
+        else:
+            st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
+
+# --- واجهة الطالب ---
+def student_dashboard():
+    st.title("🎓 ملف الطالب الشخصي")
+    st.sidebar.button("تسجيل الخروج", on_click=lambda: st.session_state.update({"logged_in": False}))
+    
+    user_id = st.session_state['user_id']
+    
+    if 'data' in st.session_state:
+        df = st.session_state['data']
+        # البحث عن بيانات الطالب الحالي
+student_row = df[df['Student_ID'].astype(str) == str(user_id)]
+        
+        if not student_row.empty:
+            data = student_row.iloc[0]
+            st.success(f"مرحباً بك يا {data['Name']}")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("أداؤك الحالي")
+                st.write(f"**درجة الاختبار:** {data['Grade']}%")
+                st.write(f"**نسبة الحضور:** {data['Attendance']}%")
+                st.progress(int(data['Grade']))
+            
+            with col2:
+                st.subheader("توقعات الذكاء الاصطناعي")
+                prob = data['Success_Probability']
+                st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
+                if prob < 50:
+                    st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
+                else:
+                    st.balloons()
+                    st.success("أنت تسير في الطريق الصحيح للنجاح!")
+
+            st.info(f"💡 توصية النظام: بناءً على تحليلاتنا، {'استمر في حضورك المتميز' if data['Attendance'] > 80 else 'حاول رفع نسبة حضورك لتحسين فرص نجاحك'}.")
+        else:
+            st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
-        return "Low"
+        st.info("انتظر حتى يقوم المعلم برفع النتائج والتحليلات.")
 
-df["Risk Level"] = df.apply(calculate_risk, axis=1)
+# --- تشغيل التطبيق ---
+if 'logged_in' not in st.session_state:
+    st.session_state['logged_in'] = False
 
-# مؤشرات
-total_students = len(df)
-high_risk = len(df[df["Risk Level"] == "High"])
-medium_risk = len(df[df["Risk Level"] == "Medium"])
-low_risk = len(df[df["Risk Level"] == "Low"])
+if not st.session_state['logged_in']:
+    login_page()
+else:
+    if st.session_state['role'] == "teacher":
+        teacher_dashboard()
+    else:
+        student_dashboard()
 
-col1, col2, col3, col4 = st.columns(4)
-
-col1.metric("عدد الطلاب", total_students)
-col2.metric("High Risk", high_risk)
-col3.metric("Medium Risk", medium_risk)
-col4.metric("Low Risk", low_risk)
-
-# تلوين الجدول
-def highlight_risk(val):
-    if val == "High":
-        return "background-color: #ffcccc"
-    elif val == "Medium":
-        return "background-color: #fff3cd"
-    elif val == "Low":
-        return "background-color: #d4edda"
-    return ""
-
-st.dataframe(df.style.map(highlight_risk, subset=["Risk Level"]))
-
-# رسم بياني
-fig, ax = plt.subplots()
-ax.pie(
-    [high_risk, medium_risk, low_risk],
-    labels=["High", "Medium", "Low"],
-    autopct='%1.1f%%'
-)
-st.pyplot(fig)
