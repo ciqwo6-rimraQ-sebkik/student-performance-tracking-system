@@ -99,7 +99,7 @@ def student_dashboard():
         # البحث عن بيانات الطالب الحالي
 student_row = df[df['Student_ID'].astype(str) == str(user_id)]
         
-        if not student_row.empty:
+     if not student_row.empty:
             data = student_row.iloc[0]
             st.success(f"مرحباً بك يا {data['Name']}")
             
