@@ -1,117 +1,107 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 from sklearn.ensemble import RandomForestClassifier
 
-# 1. إعدادات الهوية البصرية لجامعة المجمعة
+# 1. إعدادات الصفحة
 st.set_page_config(page_title="نظام جامعة المجمعة للذكاء الاصطناعي", layout="wide")
 
-MU_LOGO = "https://www.mu.edu.sa/sites/default/files/2024-05/MU-Logo-New-2024.png"
+# رابط شعار مستقر
+MU_LOGO = "https://upload.wikimedia.org/wikipedia/ar/b/b5/Majmaah_University_Logo.png"
 
-# --- تنسيق الاحترافي CSS ---
+# --- تنسيق CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
     html, body, [class*="css"] { font-family: 'Tajawal', sans-serif; text-align: right; }
     .main-title { color: #004a87; text-align: center; font-weight: bold; padding: 15px; border-bottom: 3px solid #b7934b; margin-bottom: 30px; }
-    .ai-card { background-color: #f8f9fa; padding: 20px; border-radius: 15px; border-right: 8px solid #b7934b; box-shadow: 2px 2px 10px rgba(0,0,0,0.1); }
-    .stMetric { background-color: #ffffff; padding: 10px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .ai-card { background-color: #f8f9fa; padding: 20px; border-radius: 15px; border-right: 8px solid #b7934b; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- محرك تحليل البيانات والذكاء الاصطناعي ---
+# --- قاعدة بيانات المستخدمين (من 101 إلى 105) ---
+users_db = {
+    "admin": {"password": "123", "role": "teacher", "display_name": "عضو هيئة التدريس"},
+    "101": {"password": "std", "role": "student", "display_name": "الطالب: 101"},
+    "102": {"password": "std", "role": "student", "display_name": "الطالب: 102"},
+    "103": {"password": "std", "role": "student", "display_name": "الطالب: 103"},
+    "104": {"password": "std", "role": "student", "display_name": "الطالب: 104"},
+    "105": {"password": "std", "role": "student", "display_name": "الطالب: 105"}
+}
+
+# --- محرك التحليل ---
 def run_ai_engine(df):
     try:
-        # إعداد البيانات للتدريب
         X = df[['Grade', 'Attendance']]
-        y = (df['Grade'] >= 60).astype(int) # تصنيف (ناجح/متعثر) بناءً على الدرجة
-        
-        # استخدام خوارزمية الغابة العشوائية (أقوى في التنبؤ الأكاديمي)
+        y = (df['Grade'] >= 60).astype(int)
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X, y)
-        
-        # حساب الاحتمالات وأهمية العوامل
         df['Success_Prob'] = model.predict_proba(X)[:, 1] * 100
         df['Decision'] = ["متوقع النجاح" if p >= 50 else "متوقع التعثر" for p in df['Success_Prob']]
-        
-        importances = model.feature_importances_
-        return df, importances, True
+        return df, model.feature_importances_, True
     except:
         return df, [0.5, 0.5], False
 
-# --- قاعدة بيانات تجريبية ---
-users = {"admin": "123", "101": "std", "102": "std"}
-
-# --- واجهة تسجيل الدخول ---
+# --- إدارة الدخول ---
 if 'auth' not in st.session_state: st.session_state.auth = False
 
 if not st.session_state.auth:
     col1, col2, col3 = st.columns([1,1,1])
     with col2:
-        st.image(MU_LOGO, use_container_width=True)
+        st.image(MU_LOGO, width=180)
         st.markdown("<h3 style='text-align:center;'>قسم تحليل البيانات والذكاء الاصطناعي</h3>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align:center; color:gray;'>نموذج تجريبي</p>", unsafe_allow_html=True)
         u = st.text_input("اسم المستخدم")
         p = st.text_input("كلمة المرور", type="password")
-        if st.button("تسجيل الدخول"):
-            if u in users and users[u] == p:
+        if st.button("دخول"):
+            if u in users_db and users_db[u]["password"] == p:
                 st.session_state.auth = True
-                st.session_state.user = u
+                st.session_state.user_id = u
+                st.session_state.role = users_db[u]["role"]
+                st.session_state.display_name = users_db[u]["display_name"]
                 st.rerun()
-            else: st.error("بيانات خاطئة")
+            else: st.error("خطأ في البيانات")
 else:
-    # --- لوحة التحكم الرئيسية ---
+    # --- القائمة الجانبية ---
     st.sidebar.image(MU_LOGO, width=150)
-    st.sidebar.markdown(f"**المستخدم:** {st.session_state.user}")
-    st.sidebar.caption("🎓 مشروع تخرج - نموذج تجريبي")
+    st.sidebar.write(f"👤 **المستخدم:** {st.session_state.display_name}")
+    st.sidebar.caption("🎓 نموذج تجريبي")
     if st.sidebar.button("خروج"):
         st.session_state.auth = False
         st.rerun()
 
-    st.markdown("<h2 class='main-title'>منصة التحليل الذكي للأداء الأكاديمي</h2>", unsafe_allow_html=True)
+    # --- واجهة عضو هيئة التدريس (admin) ---
+    if st.session_state.role == "teacher":
+        st.markdown("<h2 class='main-title'>منصة التحليل الذكي للأداء الأكاديمي</h2>", unsafe_allow_html=True)
+        file = st.file_uploader("تغذية النظام ببيانات الطلاب (Excel)", type=['xlsx'])
+        if file:
+            df_raw = pd.read_excel(file)
+            df, feat_imp, status = run_ai_engine(df_raw)
+            st.session_state['shared_data'] = df
+            t1, t2 = st.tabs(["📊 التحليل العام", "🤖 تحليل الذكاء الاصطناعي"])
+            with t1:
+                st.dataframe(df[['Student_ID', 'Name', 'Grade', 'Attendance', 'Decision']], use_container_width=True)
+            with t2:
+                st.markdown("<div class='ai-card'><h4>🧠 تحليل البيانات والذكاء الاصطناعي</h4></div>", unsafe_allow_html=True)
+                st.write("**أهمية العوامل:**")
+                imp_df = pd.DataFrame({'العامل': ['الدرجات', 'الحضور'], 'التأثير': feat_imp})
+                st.bar_chart(imp_df.set_index('العامل'))
 
-    file = st.file_uploader("تغذية النظام ببيانات الطلاب (Excel)", type=['xlsx'])
-    
-    if file:
-        df_raw = pd.read_excel(file)
-        df, feat_imp, status = run_ai_engine(df_raw)
-        
-        # عرض النتائج في تبويبات احترافية
-        t1, t2, t3 = st.tabs(["📊 نظرة عامة", "🤖 تحليل الذكاء الاصطناعي", "📝 السجل التفصيلي"])
-        
-        with t1:
-            m1, m2, m3 = st.columns(3)
-            m1.metric("إجمالي الطلاب", len(df))
-            m2.metric("متوسط الحضور", f"{df['Attendance'].mean():.1f}%")
-            m3.metric("توقعات التعثر", len(df[df['Decision'] == "متوقع التعثر"]))
-            
-            fig = px.scatter(df, x="Attendance", y="Grade", color="Decision", 
-                             title="توزيع الطلاب بناءً على الدرجات والحضور",
-                             color_discrete_map={"متوقع النجاح": "#004a87", "متوقع التعثر": "#991b1b"})
-            st.plotly_chart(fig, use_container_width=True)
-
-        with t2:
-            st.markdown("<div class='ai-card'><h4>🧠 منطق تحليل البيانات (AI Logic)</h4>"
-                        "يوضح هذا القسم العوامل التي اعتمد عليها النظام في تصنيف الطلاب.</div>", unsafe_allow_html=True)
-            
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.write("**أهمية العوامل (Feature Importance):**")
-                imp_data = pd.DataFrame({'العامل': ['الدرجات', 'الحضور'], 'التأثير': feat_imp})
-                st.bar_chart(imp_data.set_index('العامل'))
-            
-            with col_b:
-                st.write("**توزيع احتمالية النجاح:**")
-                fig_hist = px.histogram(df, x="Success_Prob", nbins=10, color_discrete_sequence=['#b7934b'])
-                st.plotly_chart(fig_hist, use_container_width=True)
-
-        with t3:
-            st.write("**قائمة التصنيف التنبؤي:**")
-            st.dataframe(df[['Student_ID', 'Name', 'Grade', 'Attendance', 'Decision']], use_container_width=True)
-            
-            # رسالة تحذيرية ذكية تظهر في حال وجود تعثر
-            if len(df[df['Decision'] == "متوقع التعثر"]) > 0:
-                st.warning("⚠️ كشف النظام عن طلاب معرضين للتعثر؛ يوصى بتفعيل خطة التدخل المبكر.")
-
+    # --- واجهة الطالب ---
     else:
-        st.info("الرجاء رفع ملف البيانات لبدء عملية التحليل الذكي.")
+        st.markdown("<h2 class='main-title'>تقرير الأداء الأكاديمي الذكي</h2>", unsafe_allow_html=True)
+        if 'shared_data' in st.session_state:
+            df = st.session_state['shared_data']
+            # البحث عن بيانات الطالب الحالي في الملف المرفوع
+            student_data = df[df['Student_ID'].astype(str) == str(st.session_state.user_id)]
+            
+            if not student_data.empty:
+                row = student_data.iloc[0]
+                st.info(f"الدرجة: {row['Grade']}% | الحضور: {row['Attendance']}%")
+                st.metric("احتمالية النجاح (AI)", f"{row['Success_Prob']:.1f}%")
+                if row['Decision'] == "متوقع التعثر": st.error("⚠️ تنبيه بخصوص الأداء")
+                else: st.success("✅ أداء مستقر")
+            else:
+                st.warning("عذراً، بياناتك غير موجودة في الملف المرفوع حالياً.")
+        else:
+            st.info("بانتظار قيام عضو هيئة التدريس برفع البيانات.")
