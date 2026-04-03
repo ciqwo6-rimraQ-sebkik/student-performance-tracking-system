@@ -7,8 +7,6 @@ from sklearn.ensemble import RandomForestClassifier
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
 # --- قاعدة بيانات مستخدمين تجريبية ---
-# المعلم: اسم المستخدم admin / كلمة السر 123
-# الطالب: اسم المستخدم هو رقمه في ملف الإكسل (مثلاً 101) / كلمة السر std
 users_db = {
     "admin": {"password": "123", "role": "teacher"},
     "101": {"password": "std", "role": "student"},
@@ -19,15 +17,10 @@ users_db = {
 # --- دالة تدريب الذكاء الاصطناعي ---
 def train_ai_model(df):
     try:
-        # تجهيز البيانات: الحضور والدرجات كمدخلات
         X = df[['Grade', 'Attendance']]
-        # الهدف: التنبؤ بالنجاح (درجة > 60)
         y = (df['Grade'] >= 60).astype(int)
-        
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X, y)
-        
-        # إضافة التنبؤات للملف
         df['Success_Probability'] = model.predict_proba(X)[:, 1] * 100
         df['AI_Status'] = ["ناجح متوقع" if p >= 50 else "خطر تعثر" for p in df['Success_Probability']]
         return df, True
@@ -43,7 +36,6 @@ def login_page():
             user = st.text_input("اسم المستخدم / الرقم الجامعي")
             pwd = st.text_input("كلمة المرور", type="password")
             submit = st.form_submit_button("دخول")
-            
             if submit:
                 if user in users_db and users_db[user]["password"] == pwd:
                     st.session_state['logged_in'] = True
@@ -56,26 +48,20 @@ def login_page():
 # --- واجهة المعلم ---
 def teacher_dashboard():
     st.title("👨‍🏫 لوحة تحكم المعلم (التحليل الذكي)")
-    st.sidebar.button("تسجيل الخروج", on_click=lambda: st.session_state.update({"logged_in": False}))
+    if st.sidebar.button("تسجيل الخروج"):
+        st.session_state['logged_in'] = False
+        st.rerun()
     
     file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx', 'csv'])
-    
     if file:
         df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
-        
-        # التأكد من وجود الأعمدة المطلوبة
         if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
-            # تشغيل الـ AI
             df, success = train_ai_model(df)
-            st.session_state['data'] = df # حفظ البيانات ليراها الطالب
-            
-            # إحصائيات علوية
+            st.session_state['data'] = df
             c1, c2, c3 = st.columns(3)
             c1.metric("إجمالي الطلاب", len(df))
             c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
             c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
-
-            # تبويبات العرض
             t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
             with t1:
                 fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
@@ -90,26 +76,23 @@ def teacher_dashboard():
 # --- واجهة الطالب ---
 def student_dashboard():
     st.title("🎓 ملف الطالب الشخصي")
-    st.sidebar.button("تسجيل الخروج", on_click=lambda: st.session_state.update({"logged_in": False}))
+    if st.sidebar.button("تسجيل الخروج"):
+        st.session_state['logged_in'] = False
+        st.rerun()
     
     user_id = st.session_state['user_id']
-    
     if 'data' in st.session_state:
         df = st.session_state['data']
-        # البحث عن بيانات الطالب الحالي
-student_row = df[df['Student_ID'].astype(str) == str(user_id)]
-        
-     if not student_row.empty:
+        student_row = df[df['Student_ID'].astype(str) == str(user_id)]
+        if not student_row.empty:
             data = student_row.iloc[0]
             st.success(f"مرحباً بك يا {data['Name']}")
-            
             col1, col2 = st.columns(2)
             with col1:
                 st.subheader("أداؤك الحالي")
                 st.write(f"**درجة الاختبار:** {data['Grade']}%")
                 st.write(f"**نسبة الحضور:** {data['Attendance']}%")
                 st.progress(int(data['Grade']))
-            
             with col2:
                 st.subheader("توقعات الذكاء الاصطناعي")
                 prob = data['Success_Probability']
@@ -117,16 +100,13 @@ student_row = df[df['Student_ID'].astype(str) == str(user_id)]
                 if prob < 50:
                     st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
                 else:
-                    st.balloons()
                     st.success("أنت تسير في الطريق الصحيح للنجاح!")
-
-            st.info(f"💡 توصية النظام: بناءً على تحليلاتنا، {'استمر في حضورك المتميز' if data['Attendance'] > 80 else 'حاول رفع نسبة حضورك لتحسين فرص نجاحك'}.")
         else:
             st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
         st.info("انتظر حتى يقوم المعلم برفع النتائج والتحليلات.")
 
-# --- تشغيل التطبيق ---
+# --- إدارة الجلسة ---
 if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
@@ -137,4 +117,3 @@ else:
         teacher_dashboard()
     else:
         student_dashboard()
-
