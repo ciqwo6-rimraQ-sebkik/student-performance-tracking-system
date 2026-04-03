@@ -2,20 +2,30 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from sklearn.ensemble import RandomForestClassifier
+from io import BytesIO
+import requests
 
 # 1. إعدادات الصفحة العامة
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
-# --- شعار الجامعة من GitHub + نص رسمي تحت الشعار ---
-MU_LOGO = "https://raw.githubusercontent.com/USERNAME/REPO/main/logo.png"  # ضع رابط الصورة المباشر هنا
+# --- تحميل شعار الجامعة من GitHub كملف ---
+LOGO_FILE_URL = "https://github.com/USERNAME/REPO/raw/main/logo.png"  # ضع رابط الملف هنا
 
 def show_university_logo():
-    st.markdown(f"""
-    <div style='text-align:center; margin-bottom:10px;'>
-        <img src='{MU_LOGO}' width='180'>
-        <p style='font-size:18px; color:#004a87; margin:5px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
-        <p style='font-size:16px; color:#b7934b; margin:0;'>نسخة تجريبية</p>
-    </div>
+    # تحميل الملف من GitHub
+    try:
+        response = requests.get(LOGO_FILE_URL)
+        logo_bytes = BytesIO(response.content)
+        st.image(logo_bytes, width=180)
+    except:
+        st.warning("لم يتمكن النظام من تحميل شعار الجامعة")
+
+    # النصوص تحت الشعار
+    st.markdown("""
+        <div style='text-align:center; margin-top:5px;'>
+            <p style='font-size:18px; color:#004a87; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
+            <p style='font-size:16px; color:#b7934b; margin:0;'>نسخة تجريبية</p>
+        </div>
     """, unsafe_allow_html=True)
 
 # --- قاعدة بيانات مستخدمين تجريبية ---
@@ -30,20 +40,17 @@ users_db = {
 
 # --- دالة تدريب الذكاء الاصطناعي ---
 def train_ai_model(df):
-    try:
-        X = df[['Grade', 'Attendance']]
-        y = (df['Grade'] >= 60).astype(int)
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X, y)
-        df['Success_Probability'] = model.predict_proba(X)[:, 1] * 100
-        df['AI_Status'] = ["ناجح متوقع" if p >= 50 else "خطر تعثر" for p in df['Success_Probability']]
-        return df, True
-    except:
-        return df, False
+    X = df[['Grade', 'Attendance']]
+    y = (df['Grade'] >= 60).astype(int)
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    model.fit(X, y)
+    df['Success_Probability'] = model.predict_proba(X)[:, 1] * 100
+    df['AI_Status'] = ["ناجح متوقع" if p >= 50 else "خطر تعثر" for p in df['Success_Probability']]
+    return df
 
 # --- واجهة تسجيل الدخول ---
 def login_page():
-    show_university_logo()  # الشعار + النصوص تحت
+    show_university_logo()
     st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -70,29 +77,26 @@ def teacher_dashboard():
     
     file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx', 'csv'])
     if file:
-        try:
-            df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
-            if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
-                df, success = train_ai_model(df)
-                st.session_state['data'] = df
-                c1, c2, c3 = st.columns(3)
-                c1.metric("إجمالي الطلاب", len(df))
-                c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
-                c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
-                
-                t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
-                with t1:
-                    fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
-                                     size="Success_Probability", hover_name="Name",
-                                     title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي",
-                                     color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"})
-                    st.plotly_chart(fig, use_container_width=True)
-                with t2:
-                    st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
-            else:
-                st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
-        except Exception as e:
-            st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
+        df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+        if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
+            df = train_ai_model(df)
+            st.session_state['data'] = df
+            c1, c2, c3 = st.columns(3)
+            c1.metric("إجمالي الطلاب", len(df))
+            c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
+            c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
+            
+            t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
+            with t1:
+                fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
+                                 size="Success_Probability", hover_name="Name",
+                                 title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي",
+                                 color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"})
+                st.plotly_chart(fig, use_container_width=True)
+            with t2:
+                st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
+        else:
+            st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
 
 # --- واجهة الطالب ---
 def student_dashboard():
