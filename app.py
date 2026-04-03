@@ -4,51 +4,45 @@ import plotly.express as px
 from sklearn.ensemble import RandomForestClassifier
 
 # إعداد الصفحة
-st.set_page_config(page_title="نظام جامعة المجمعة للتحليل الأكاديمي", layout="wide")
+st.set_page_config(page_title="نظام التحليل الأكاديمي", layout="wide")
 
-# الشعار (ملف محلي داخل المجلد)
+# الشعار
 MU_LOGO = "logo.png"
 
-# --- تصميم CSS ---
+# --- CSS ---
 st.markdown("""
 <style>
-html, body, [class*="css"] {
-    font-family: 'Tajawal', sans-serif;
+html, body {
     text-align: right;
-    background-color: #fcfcfc;
+    font-family: 'Tajawal', sans-serif;
+}
+
+.center {
+    text-align: center;
 }
 
 .main-header {
-    color: #004a87;
     text-align: center;
+    color: #004a87;
     font-weight: bold;
-    padding: 25px;
-    border-bottom: 5px solid #b7934b;
-    margin-bottom: 40px;
-    background-color: #ffffff;
-    border-radius: 8px;
-}
-
-.teacher-box {
-    border: 2px solid #b7934b;
-    padding: 15px;
-    border-radius: 10px;
-    text-align: center;
-    color: #004a87;
-    margin-bottom: 20px;
+    padding: 20px;
+    border-bottom: 4px solid #b7934b;
+    margin-bottom: 30px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# قاعدة المستخدمين
+# المستخدمين
 users_db = {
-    "admin": {"password": "123", "role": "teacher", "full_name": "عضو هيئة التدريس"},
+    "admin": {"password": "123", "role": "teacher"},
     "101": {"password": "std", "role": "student"},
     "102": {"password": "std", "role": "student"},
     "103": {"password": "std", "role": "student"},
+    "104": {"password": "std", "role": "student"},
+    "105": {"password": "std", "role": "student"},
 }
 
-# --- تحليل البيانات ---
+# --- AI ---
 def process_academic_analysis(df):
     X = df[['Grade', 'Attendance']]
     y = (df['Grade'] >= 60).astype(int)
@@ -66,25 +60,30 @@ if 'logged_in' not in st.session_state:
     st.session_state['logged_in'] = False
 
 if not st.session_state['logged_in']:
-    st.image(MU_LOGO, width=200)
+    
+    # الشعار بالنص
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.image(MU_LOGO, width=200)
+        st.markdown("<h2 class='center'>نظام التحليل الأكاديمي</h2>", unsafe_allow_html=True)
+        st.markdown("<p class='center'>قسم تحليل البيانات والذكاء الاصطناعي</p>", unsafe_allow_html=True)
+        st.markdown("<p class='center' style='color:gray;'>نموذج تجريبي</p>", unsafe_allow_html=True)
 
-    st.markdown("<h2 style='text-align: center; color:#004a87;'>منصة التحليل الأكاديمي</h2>", unsafe_allow_html=True)
+        with st.form("login"):
+            user = st.text_input("اسم المستخدم")
+            pwd = st.text_input("كلمة المرور", type="password")
+            btn = st.form_submit_button("تسجيل الدخول")
 
-    with st.form("login"):
-        user = st.text_input("اسم المستخدم")
-        pwd = st.text_input("كلمة المرور", type="password")
-        btn = st.form_submit_button("تسجيل الدخول")
+            if btn:
+                if user in users_db and users_db[user]["password"] == pwd:
+                    st.session_state['logged_in'] = True
+                    st.session_state['user_id'] = user
+                    st.session_state['role'] = users_db[user]["role"]
+                    st.rerun()
+                else:
+                    st.error("بيانات غير صحيحة")
 
-        if btn:
-            if user in users_db and users_db[user]["password"] == pwd:
-                st.session_state['logged_in'] = True
-                st.session_state['user_id'] = user
-                st.session_state['role'] = users_db[user]["role"]
-                st.rerun()
-            else:
-                st.error("بيانات غير صحيحة")
-
-# --- بعد تسجيل الدخول ---
+# --- بعد الدخول ---
 else:
     st.sidebar.image(MU_LOGO, width=120)
 
@@ -92,9 +91,9 @@ else:
         st.session_state['logged_in'] = False
         st.rerun()
 
-    # 👨‍🏫 واجهة الدكتور
+    # 👨‍🏫 الدكتور
     if st.session_state['role'] == "teacher":
-        st.markdown("<div class='main-header'>لوحة التحكم</div>", unsafe_allow_html=True)
+        st.markdown("<div class='main-header'>لوحة تحكم الدكتور</div>", unsafe_allow_html=True)
 
         file = st.file_uploader("ارفع ملف Excel", type=['xlsx'])
 
@@ -102,31 +101,29 @@ else:
             df = pd.read_excel(file)
 
             if all(col in df.columns for col in ['Student_ID','Name','Grade','Attendance']):
+                
                 with st.spinner("جاري التحليل..."):
                     df = process_academic_analysis(df)
 
-                st.success("تم التحليل بنجاح ✅")
-
                 st.session_state['data'] = df
 
+                # مؤشرات
                 col1, col2, col3 = st.columns(3)
                 col1.metric("عدد الطلاب", len(df))
                 col2.metric("المتوسط", f"{df['Grade'].mean():.1f}")
-                col3.metric("حالات الخطر", len(df[df['AI_Status']=="خطر"]))
+                col3.metric("عدد الحالات الخطرة", len(df[df['AI_Status']=="خطر"]))
 
-                fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status")
-                st.plotly_chart(fig, use_container_width=True)
+                # Tabs بدل ما يكون الجدول تحت الرسم
+                tab1, tab2 = st.tabs(["📊 الرسم البياني", "📋 الجدول"])
 
-                st.dataframe(df)
+                with tab1:
+                    fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status")
+                    st.plotly_chart(fig, use_container_width=True)
 
-                # تحميل البيانات
-                csv = df.to_csv(index=False).encode('utf-8')
-                st.download_button("تحميل النتائج", csv, "students.csv")
+                with tab2:
+                    st.dataframe(df)
 
-            else:
-                st.error("الأعمدة غير صحيحة")
-
-    # 👩‍🎓 واجهة الطالب
+    # 👩‍🎓 الطالب
     else:
         st.markdown("<div class='main-header'>تقرير الطالب</div>", unsafe_allow_html=True)
 
@@ -147,7 +144,6 @@ else:
                     st.error("مستواك يحتاج تحسين")
                 else:
                     st.success("أداء ممتاز 👏")
-
             else:
                 st.warning("لا توجد بيانات")
         else:
