@@ -1,99 +1,78 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. إعدادات الصفحة
-st.set_page_config(page_title="وحدة المراقبة الأكاديمية - جامعة طيبة", layout="wide")
+# إعدادات الصفحة
+st.set_page_config(page_title="نظام متابعة أداء الطلاب", layout="wide")
 
-# 2. إضافة الشعار والهوية البصرية (Custom CSS)
-st.markdown("""
-    <style>
-    .main {
-        background-color: #f8f9fa;
-    }
-    .stMetric {
-        background-color: #ffffff;
-        padding: 15px;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        border-right: 5px solid #007b3e; /* لون جامعة طيبة الأخضر */
-    }
-    h1 {
-        color: #1a2a44; /* كحلي غامق */
-    }
-    </style>
-    """, unsafe_allow_input=True)
-
-# 3. الهيدر مع الشعار
-col_logo, col_title = st.columns([1, 4])
-
-with col_logo:
-    # ملاحظة: استبدل الرابط أدناه برابط شعار جامعة طيبة الرسمي أو مسار ملف محلي
-    st.image("https://www.taibahu.edu.sa/Pages/AR/Image.aspx?ID=3", width=150)
-
-with col_title:
-    st.markdown("<h1 style='margin-top: 20px;'>وحدة المراقبة الأكاديمية (أعضاء هيئة التدريس)</h1>", unsafe_allow_input=True)
-    st.markdown("<p style='font-size: 1.2rem; color: #555;'>نظام التنبؤ بحالات التعثر - جامعة طيبة</p>", unsafe_allow_input=True)
-
+# تصميم الهيدر وشعار بسيط
+st.markdown("<h1 style='text-align: center; color: #2E4053;'>نظام التحليل الذكي لأداء الطلاب</h1>", unsafe_allow_input=True)
 st.write("---")
 
-# 4. الشريط الجانبي
-st.sidebar.header("لوحة التحكم")
-uploaded_file = st.sidebar.file_uploader("ارفع سجل الطلاب (Excel)", type=['xlsx', 'csv'])
+# الجزء الخاص برفع الملف
+st.sidebar.header("تحميل البيانات")
+uploaded_file = st.sidebar.file_uploader("اختر ملف Excel أو CSV", type=['csv', 'xlsx'])
 
 if uploaded_file is not None:
+    # قراءة الملف
     try:
-        # قراءة البيانات
-        df = pd.read_excel(uploaded_file) if uploaded_file.name.endswith('.xlsx') else pd.read_csv(uploaded_file)
+        if uploaded_file.name.endswith('.csv'):
+            df = pd.read_csv(uploaded_file)
+        else:
+            df = pd.read_excel(uploaded_file)
         
-        # التأكد من وجود الأعمدة المطلوبة (الدرجات، الحضور)
-        # ملاحظة: عدلت أسماء الأعمدة لتناسب الكود السابق
-        if 'Grade' in df.columns:
+        # --- منطق معالجة البيانات (بديل الـ AI المعقد) ---
+        # لنفترض أن الملف يحتوي على أعمدة: Grade, Attendance
+        if 'Grade' in df.columns and 'Attendance' in df.columns:
+            def calculate_risk(row):
+                if row['Grade'] < 60 or row['Attendance'] < 50:
+                    return 'High'
+                elif row['Grade'] < 75:
+                    return 'Medium'
+                else:
+                    return 'Low'
             
-            # --- منطق التنبؤ (حالة التنبؤ) ---
-            def predict_status(grade):
-                return "ناجح" if grade >= 60 else "متعثر"
+            df['Risk Level'] = df.apply(calculate_risk, axis=1)
             
-            df['AI_Status'] = df['Grade'].apply(predict_status)
-            
-            # حساب النسب
-            total_students = len(df)
-            fail_count = len(df[df['AI_Status'] == 'متعثر'])
-            fail_percentage = (fail_count / total_students) * 100
-            avg_grade = df['Grade'].mean()
+            # --- عرض الإحصائيات العلوية ---
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("إجمالي الطلاب", len(df))
+            col2.metric("عالي الخطورة", len(df[df['Risk Level'] == 'High']))
+            col3.metric("متوسط الخطورة", len(df[df['Risk Level'] == 'Medium']))
+            col4.metric("منخفض الخطورة", len(df[df['Risk Level'] == 'Low']))
 
-            # --- عرض المؤشرات (مثل الصورة التي أرسلتها) ---
-            m1, m2, m3 = st.columns(3)
-            m1.metric("إجمالي الطلاب", f"{total_students}")
-            m2.metric("متوسط الدرجات", f"{avg_grade:.1f}")
-            m3.metric("حالات التعثر المحتملة", f"{fail_percentage:.1f}%", delta=f"{fail_count} طالب", delta_color="inverse")
+            st.write("### بيانات الطلاب المحللة")
+            st.dataframe(df, use_container_width=True)
 
-            st.write("### 📊 تحليل النتائج")
+            # --- الرسوم البيانية ---
+            st.write("---")
+            c1, c2 = st.columns(2)
             
-            tab1, tab2 = st.tabs(["السجل الرقمي الموحد", "التحليل البياني"])
-            
-            with tab1:
-                st.dataframe(df.style.highlight_max(axis=0, color='#d4edda'), use_container_width=True)
-            
-            with tab2:
-                c1, c2 = st.columns(2)
-                with c1:
-                    # رسم بياني دائري (توزيع الحالات)
-                    fig_pie = px.pie(df, names='AI_Status', title="نسبة النجاح والتعثر المتوقعة",
-                                    color='AI_Status',
-                                    color_discrete_map={'ناجح':'#007b3e', 'متعثر':'#dc3545'})
-                    st.plotly_chart(fig_pie, use_container_width=True)
+            with c1:
+                st.write("#### توزيع مستويات الخطورة")
+                fig_pie = px.pie(df, names='Risk Level', color='Risk Level',
+                                 color_discrete_map={'High':'#FF4B4B', 'Medium':'#FFA500', 'Low':'#28A745'})
+                st.plotly_chart(fig_pie)
                 
-                with c2:
-                    # رسم بياني للدرجات
-                    fig_hist = px.histogram(df, x='Grade', title="توزيع درجات الطلاب",
-                                           color_discrete_sequence=['#1a2a44'])
-                    st.plotly_chart(fig_hist, use_container_width=True)
+            with c2:
+                st.write("#### العلاقة بين الدرجات والحضور")
+                fig_scatter = px.scatter(df, x='Attendance', y='Grade', color='Risk Level',
+                                         hover_name='Name' if 'Name' in df.columns else None)
+                st.plotly_chart(fig_scatter)
 
         else:
-            st.error("خطأ: الملف لا يحتوي على عمود 'Grade'. يرجى التأكد من تسمية الأعمدة بشكل صحيح.")
+            st.error("تنبيه: تأكد أن الملف يحتوي على أعمدة باسم 'Grade' و 'Attendance'")
 
     except Exception as e:
-        st.error(f"حدث خطأ في معالجة الملف: {e}")
+        st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
 else:
-    st.info("الرجاء رفع ملف Excel يحتوي على بيانات الطلاب لعرض التحليل.")
+    st.info("الرجاء رفع ملف Excel للبدء في تحليل أداء الطلاب.")
+    # عرض مثال لشكل الجدول المطلوب
+    st.write("مثال لشكل البيانات المطلوبة:")
+    example_df = pd.DataFrame({
+        'Student_ID': [101, 102],
+        'Name': ['أحمد', 'سارة'],
+        'Grade': [85, 55],
+        'Attendance': [90, 40]
+    })
+    st.table(example_df)
