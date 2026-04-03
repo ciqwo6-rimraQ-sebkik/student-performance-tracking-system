@@ -29,7 +29,7 @@ def train_ai_model(df):
 
 # --- واجهة تسجيل الدخول ---
 def login_page():
-    st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_input=True)
+    st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
@@ -54,24 +54,28 @@ def teacher_dashboard():
     
     file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx', 'csv'])
     if file:
-        df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
-        if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
-            df, success = train_ai_model(df)
-            st.session_state['data'] = df
-            c1, c2, c3 = st.columns(3)
-            c1.metric("إجمالي الطلاب", len(df))
-            c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
-            c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
-            t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
-            with t1:
-                fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
-                                 size="Success_Probability", hover_name="Name",
-                                 title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي")
-                st.plotly_chart(fig, use_container_width=True)
-            with t2:
-                st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
-        else:
-            st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
+        try:
+            df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
+            if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
+                df, success = train_ai_model(df)
+                st.session_state['data'] = df
+                c1, c2, c3 = st.columns(3)
+                c1.metric("إجمالي الطلاب", len(df))
+                c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
+                c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
+                
+                t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
+                with t1:
+                    fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
+                                     size="Success_Probability", hover_name="Name",
+                                     title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي")
+                    st.plotly_chart(fig, use_container_width=True)
+                with t2:
+                    st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
+            else:
+                st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء قراءة الملف: {e}")
 
 # --- واجهة الطالب ---
 def student_dashboard():
