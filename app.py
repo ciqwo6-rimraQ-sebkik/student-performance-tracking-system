@@ -11,27 +11,27 @@ st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذك
 # --- ألوان رسمية ---
 st.markdown("""
 <style>
-body {background-color: #fdf7e3;} /* خلفية فاتحة ذهبي فاتح */
-h1, h2, h3, h4 {color: #b7934b;} /* لون ذهبي للشعارات والعناوين */
+body {background-color: #fdf7e3;} 
+h1, h2, h3, h4 {color: #b7934b;} 
 .stButton>button {background-color:#b7934b; color:white; border-radius:8px; width:100%; padding:0.5em;}
 .sidebar .sidebar-content {background-color: #004a87; color:white; border-radius:8px; padding:10px;}
+.page-button {background-color:#6a6a6a; color:white; border-radius:8px; width:100%; padding:0.5em; margin-bottom:5px;}
 .stMetric {background-color: white !important; border: 2px solid #004a87; border-radius: 8px; padding: 10px;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- شعار الجامعة على اليسار أعلى الصفحة ---
+# --- شعار الجامعة ونسخة تجريبية ---
 def show_university_logo():
     try:
         with open("logo.png", "rb") as f:
             logo_bytes = BytesIO(f.read())
-        st.sidebar.image(logo_bytes, width=120)
+        st.sidebar.image(logo_bytes, width=150, use_column_width=False)
     except:
         st.sidebar.warning("لم يتمكن النظام من تحميل شعار الجامعة")
 
     st.sidebar.markdown("""
         <div style='text-align:center; margin-top:5px;'>
-            <p style='font-size:16px; color:#b7934b; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
-            <p style='font-size:14px; color:white; margin:0;'>نسخة تجريبية</p>
+            <p style='font-size:16px; color:#333333; margin:2px 0; background-color:#b7934b; padding:2px 5px; border-radius:5px;'>نسخة تجريبية</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -40,7 +40,7 @@ users_db = {"admin": {"password": "123", "role": "teacher"}}
 for i in range(101, 121):
     users_db[str(i)] = {"password": "std", "role": "student"}
 
-# --- دالة تدريب AI ---
+# --- تدريب AI ---
 def train_ai_model(df):
     subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
     df['Grade'] = df[subject_cols].mean(axis=1)
@@ -54,8 +54,8 @@ def train_ai_model(df):
 
 # --- واجهة تسجيل الدخول ---
 def login_page():
-    show_university_logo()
-    st.markdown("<h2 style='text-align: center;'>تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align:center; color:#004a87;'>قسم تحليل البيانات والذكاء الاصطناعي</h2>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center;'>🔐 تسجيل الدخول للنظام الذكي</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.form("login_form"):
@@ -75,7 +75,6 @@ def login_page():
 def teacher_dashboard():
     show_university_logo()
     st.title("لوحة تحكم المعلم")
-
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
         st.rerun()
@@ -99,22 +98,13 @@ def teacher_dashboard():
 
             # --- Sidebar Navigation ---
             page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"], index=0)
-            container_style = """
-            <div style='background-color:#fff2cc; padding:20px; border-radius:10px; border:2px solid #b7934b;'>
-            """
-            container_end = "</div>"
-
             if page == "ملخص AI":
-                st.markdown(container_style, unsafe_allow_html=True)
-                weak_subjects = df[['Math','Physics','Chemistry']].mean().sort_values().head(3).index.tolist()
                 st.subheader("ملخص AI")
+                weak_subjects = df[['Math','Physics','Chemistry']].mean().sort_values().head(3).index.tolist()
                 st.write(f"الطلاب المتوقع نجاحهم: {total_students - at_risk}")
                 st.write(f"الطلاب المعرضين للخطر: {at_risk}")
                 st.write(f"أكثر المواد ضعفًا: {', '.join(weak_subjects)}")
-                st.markdown(container_end, unsafe_allow_html=True)
-
             elif page == "جدول الطلاب":
-                st.markdown(container_style, unsafe_allow_html=True)
                 st.subheader("الجدول التفصيلي")
                 df_display = df.copy()
                 def color_prob_html(prob):
@@ -124,10 +114,7 @@ def teacher_dashboard():
                     return f'<span style="background-color:{color}; color:white; padding:2px 5px; border-radius:3px">{prob:.1f}%</span>'
                 df_display['Success_Probability'] = df_display['Success_Probability'].apply(color_prob_html)
                 st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-                st.markdown(container_end, unsafe_allow_html=True)
-
             elif page == "الرسوم البيانية":
-                st.markdown(container_style, unsafe_allow_html=True)
                 st.subheader("الرسوم البيانية")
                 fig_scatter = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
                                          size="Success_Probability", hover_name="Name",
@@ -140,7 +127,6 @@ def teacher_dashboard():
                                  color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"},
                                  title="نسبة الطلاب حسب الحالة")
                 st.plotly_chart(fig_pie, use_container_width=True)
-                st.markdown(container_end, unsafe_allow_html=True)
         else:
             st.error("الملف يجب أن يحتوي على جميع الأعمدة المطلوبة")
 
@@ -148,7 +134,6 @@ def teacher_dashboard():
 def student_dashboard():
     show_university_logo()
     st.title("ملف الطالب الشخصي")
-
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
         st.rerun()
@@ -160,28 +145,11 @@ def student_dashboard():
         if not student_row.empty:
             data = student_row.iloc[0]
             subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
-
             page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة"], index=0)
-            container_style = """
-            <div style='background-color:#fff2cc; padding:20px; border-radius:10px; border:2px solid #b7934b;'>
-            """
-            container_end = "</div>"
-
             if page == "درجات المواد":
-                st.markdown(container_style, unsafe_allow_html=True)
                 st.subheader("درجاتك في المواد")
                 st.dataframe(data[subject_cols])
-                fig_bar = px.bar(x=subject_cols, y=[data[sub] for sub in subject_cols],
-                                 labels={'x':'المادة','y':'الدرجة'},
-                                 title="مستوى الطالب في كل مادة")
-                st.plotly_chart(fig_bar, use_container_width=True)
-                fig_pie = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
-                                 title="نسبة كل مادة من مجموع درجاتك")
-                st.plotly_chart(fig_pie, use_container_width=True)
-                st.markdown(container_end, unsafe_allow_html=True)
-
             elif page == "المعدل العام والتقدير":
-                st.markdown(container_style, unsafe_allow_html=True)
                 overall_percentage = student_row[subject_cols].mean(axis=1).iloc[0]
                 if overall_percentage >= 90: grade_letter = "امتياز"
                 elif overall_percentage >= 80: grade_letter = "جيد جدًا"
@@ -190,19 +158,13 @@ def student_dashboard():
                 else: grade_letter = "ضعيف"
                 st.subheader("تقديرك العام")
                 st.metric(label="المعدل العام", value=f"{overall_percentage:.1f}% - {grade_letter}")
-                st.markdown(container_end, unsafe_allow_html=True)
-
             elif page == "توقعات AI":
-                st.markdown(container_style, unsafe_allow_html=True)
                 prob = data['Success_Probability']
                 st.subheader("توقعات الذكاء الاصطناعي")
                 st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
                 if prob<50: st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
                 else: st.success("أنت تسير في الطريق الصحيح للنجاح!")
-                st.markdown(container_end, unsafe_allow_html=True)
-
             elif page == "خطة المذاكرة":
-                st.markdown(container_style, unsafe_allow_html=True)
                 st.subheader("خطة المذاكرة الذكية")
                 plan = []
                 weak_subjects = [sub for sub in subject_cols if data[sub]<60]
@@ -218,7 +180,6 @@ def student_dashboard():
                 else:
                     plan.append("- استمر على نفس المستوى مع مراجعة يومية خفيفة")
                 for p in plan: st.write(p)
-                st.markdown(container_end, unsafe_allow_html=True)
         else:
             st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
