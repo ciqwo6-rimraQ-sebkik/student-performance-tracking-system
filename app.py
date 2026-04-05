@@ -2,17 +2,14 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from sklearn.ensemble import RandomForestClassifier
-from io import BytesIO
 
 # 1. إعدادات الصفحة العامة
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
-# --- رابط شعار الجامعة ---
-LOGO_FILE_URL = "https://github.com/USERNAME/REPO/raw/main/logo.png"  # ضع الرابط الصحيح هنا
-
+# --- شعار الجامعة من المشروع ---
 def show_university_logo():
     try:
-        st.image(LOGO_FILE_URL, width=180)
+        st.image("logo.png", width=180)  # يستخدم الملف المحلي
     except:
         st.warning("لم يتمكن النظام من تحميل شعار الجامعة")
 
@@ -23,16 +20,15 @@ def show_university_logo():
         </div>
     """, unsafe_allow_html=True)
 
-# --- قاعدة بيانات المستخدمين ---
+# --- قاعدة بيانات مستخدمين تجريبية ---
 users_db = {"admin": {"password": "123", "role": "teacher"}}
 for i in range(101, 121):
     users_db[str(i)] = {"password": "std", "role": "student"}
 
-# --- الأعمدة للمواد ---
-subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
-
-# --- تدريب الذكاء الاصطناعي ---
+# --- دالة تدريب الذكاء الاصطناعي ---
 def train_ai_model(df):
+    subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
+    df['Grade'] = df[subject_cols].mean(axis=1)
     X = df[['Grade', 'Attendance']]
     y = (df['Grade'] >= 60).astype(int)
     model = RandomForestClassifier(n_estimators=100, random_state=42)
@@ -45,7 +41,7 @@ def train_ai_model(df):
 def login_page():
     show_university_logo()
     st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         with st.form("login_form"):
             user = st.text_input("اسم المستخدم / الرقم الجامعي")
@@ -68,25 +64,17 @@ def teacher_dashboard():
         st.session_state['logged_in'] = False
         st.rerun()
     
-    file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx','csv'])
+    file = st.file_uploader("ارفع ملف بيانات الطلاب (Excel/CSV)", type=['xlsx', 'csv'])
     if file:
         df = pd.read_excel(file) if file.name.endswith('.xlsx') else pd.read_csv(file)
-        
-        # حساب المعدل التلقائي
-        if all(sub in df.columns for sub in subject_cols):
-            df['Grade'] = df[subject_cols].mean(axis=1)
-        
-        if all(col in df.columns for col in ['Student_ID', 'Name', 'Grade', 'Attendance']):
+        if all(col in df.columns for col in ['Student_ID', 'Name', 'Attendance','Math','Science','English','Physics','Chemistry','Biology','Computer']):
             df = train_ai_model(df)
             st.session_state['data'] = df
-
-            # مؤشرات الأداء
             c1, c2, c3 = st.columns(3)
             c1.metric("إجمالي الطلاب", len(df))
             c2.metric("متوسط الدرجات", f"{df['Grade'].mean():.1f}%")
             c3.metric("طلاب في منطقة الخطر", len(df[df['Success_Probability'] < 50]))
-
-            # Tabs للتحليل
+            
             t1, t2 = st.tabs(["📊 تحليل البيانات", "📋 الجدول التفصيلي"])
             with t1:
                 fig = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
@@ -109,29 +97,8 @@ def teacher_dashboard():
                 df_display = df.copy()
                 df_display['Success_Probability'] = df_display['Success_Probability'].apply(color_prob_html)
                 st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
-
-            # Pie Chart لحالات الطلاب
-            st.subheader(" توزيع حالات الطلاب")
-            status_counts = df['AI_Status'].value_counts()
-            fig_pie = px.pie(
-                names=status_counts.index,
-                values=status_counts.values,
-                title="نسبة الطلاب (ناجح متوقع vs خطر تعثر)",
-                color=status_counts.index,
-                color_discrete_map={"ناجح متوقع": "#004a87","خطر تعثر": "#b7934b"}
-            )
-            st.plotly_chart(fig_pie, use_container_width=True)
-
-            # الطلاب المعرضين للخطر
-            st.subheader("🚨 الطلاب المعرضين للخطر (تنبيه مبكر)")
-            at_risk = df[df['Success_Probability'] < 50]
-            if not at_risk.empty:
-                st.warning(f"عدد الطلاب المعرضين للخطر: {len(at_risk)}")
-                st.dataframe(at_risk[['Student_ID','Name','Grade','Attendance','Success_Probability']])
-            else:
-                st.success("🎉 لا يوجد طلاب في منطقة الخطر!")
         else:
-            st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
+            st.error("الملف يجب أن يحتوي على الأعمدة المطلوبة للطلاب والمواد")
 
 # --- واجهة الطالب ---
 def student_dashboard():
@@ -140,7 +107,7 @@ def student_dashboard():
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
         st.rerun()
-
+    
     user_id = st.session_state['user_id']
     if 'data' in st.session_state:
         df = st.session_state['data']
@@ -148,63 +115,80 @@ def student_dashboard():
         if not student_row.empty:
             data = student_row.iloc[0]
             st.success(f"مرحباً بك يا {data['Name']}")
-
-            # درجات المواد
+            
+            # --- درجات المواد ---
+            subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
             st.subheader("📚 درجاتك في المواد")
             st.dataframe(data[subject_cols])
-
-            # Bar Chart
+            
+            # --- Bar Chart ---
             st.subheader("📊 تحليل درجاتك")
-            y_values = [data[sub] for sub in subject_cols]
             fig_bar = px.bar(
                 x=subject_cols,
-                y=y_values,
-                labels={'x':'المادة','y':'الدرجة'},
+                y=[data[sub] for sub in subject_cols],
+                labels={'x': 'المادة', 'y': 'الدرجة'},
                 title="مستوى الطالب في كل مادة"
             )
             st.plotly_chart(fig_bar, use_container_width=True)
-
-            # Pie Chart
+            
+            # --- Pie Chart ---
             st.subheader("🥧 توزيع درجاتك")
             fig_pie = px.pie(
                 names=subject_cols,
-                values=y_values,
+                values=[data[sub] for sub in subject_cols],
                 title="نسبة كل مادة من مجموع درجاتك"
             )
             st.plotly_chart(fig_pie, use_container_width=True)
-
-            # التوصيات الذكية
-            st.subheader("🤖 توصيات ذكية لتحسين مستواك")
+            
+            # --- معدل الطالب + تقدير ---
+            overall_percentage = student_row[subject_cols].mean(axis=1).iloc[0]
+            if overall_percentage >= 90:
+                grade_letter = "امتياز"
+            elif overall_percentage >= 80:
+                grade_letter = "جيد جدًا"
+            elif overall_percentage >= 70:
+                grade_letter = "جيد"
+            elif overall_percentage >= 60:
+                grade_letter = "مقبول"
+            else:
+                grade_letter = "ضعيف"
+            
+            st.subheader("📌 تقديرك العام")
+            st.metric(label="المعدل العام", value=f"{overall_percentage:.1f}% - {grade_letter}")
+            
+            # --- AI والتوصيات ---
+            st.subheader("🤖 توقعات الذكاء الاصطناعي")
+            prob = data['Success_Probability']
+            st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
+            if prob < 50:
+                st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
+            else:
+                st.success("أنت تسير في الطريق الصحيح للنجاح!")
+            
+            st.subheader("📅 خطة مذاكرة ذكية")
             recommendations = []
-
             weak_subjects = [sub for sub in subject_cols if data[sub] < 60]
             if weak_subjects:
                 recommendations.append(f"📚 تحتاج تركز على المواد التالية: {', '.join(weak_subjects)}")
-            
             if data['Attendance'] < 75:
                 recommendations.append("📉 حاول ترفع نسبة حضورك")
-            
-            engagement = data.get('Engagement', 100)
-            if engagement < 50:
+            if 'Engagement' in data and data['Engagement'] < 50:
                 recommendations.append("🙋‍♂️ زيد مشاركتك داخل المحاضرات")
-            
             if data['Success_Probability'] < 50:
                 recommendations.append("⚠️ أنت في منطقة الخطر، تحتاج خطة مذاكرة مكثفة")
-            
             if not recommendations:
                 st.success("🔥 أداؤك ممتاز! استمر كذا")
             for rec in recommendations:
                 st.write(rec)
-
-            # خطة المذاكرة الذكية
-            st.subheader("📅 خطة مذاكرة ذكية")
+            
+            # خطة المذاكرة التفصيلية
             plan = []
             if weak_subjects:
                 for sub in weak_subjects:
                     plan.append(f"📌 ركّز على مادة {sub} لمدة ساعة يوميًا")
             if data['Attendance'] < 75:
                 plan.append("📍 احرص على حضور جميع المحاضرات القادمة")
-            if engagement < 50:
+            if 'Engagement' in data and data['Engagement'] < 50:
                 plan.append("📍 شارك في الكلاس واسأل الأسئلة")
             if data['Success_Probability'] < 50:
                 plan.append("🔥 خصص 3-4 ساعات يوميًا للمذاكرة المكثفة")
