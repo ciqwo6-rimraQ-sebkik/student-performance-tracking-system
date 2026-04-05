@@ -111,7 +111,7 @@ def teacher_dashboard():
                 st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
 
             # Pie Chart لحالات الطلاب
-            st.subheader("🥧 توزيع حالات الطلاب")
+            st.subheader(" توزيع حالات الطلاب")
             status_counts = df['AI_Status'].value_counts()
             fig_pie = px.pie(
                 names=status_counts.index,
