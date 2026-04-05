@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -14,7 +15,7 @@ body {background-color: #fdf7e3;}
 h1, h2, h3, h4 {color: #b7934b;} 
 .stButton>button {background-color:#b7934b; color:white; border-radius:8px; width:100%; padding:0.5em;}
 .sidebar .sidebar-content {background-color: #004a87; color:white; border-radius:8px; padding:10px;}
-.page-button {background-color:#6a6a6a; color:white; font-weight:bold; border-radius:8px; width:100%; padding:0.5em; margin-bottom:5px;}
+.page-button {background-color:#6a6a6a; color:white; border-radius:8px; width:100%; padding:0.5em; margin-bottom:5px;}
 .stMetric {background-color: white !important; border: 2px solid #004a87; border-radius: 8px; padding: 10px;}
 </style>
 """, unsafe_allow_html=True)
@@ -24,13 +25,13 @@ def show_university_logo():
     try:
         with open("logo.png", "rb") as f:
             logo_bytes = BytesIO(f.read())
-        st.image(logo_bytes, width=180)
+        st.sidebar.image(logo_bytes, width=150, use_column_width=False)
     except:
-        st.warning("لم يتمكن النظام من تحميل شعار الجامعة")
+        st.sidebar.warning("لم يتمكن النظام من تحميل شعار الجامعة")
 
-    st.markdown("""
+    st.sidebar.markdown("""
         <div style='text-align:center; margin-top:5px;'>
-            <p style='font-size:16px; color:#333333; margin:2px 0; background-color:#b7934b; padding:3px 5px; border-radius:5px;'>نسخة تجريبية</p>
+            <p style='font-size:16px; color:#333333; margin:2px 0; background-color:#b7934b; padding:2px 5px; border-radius:5px;'>نسخة تجريبية</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -53,7 +54,6 @@ def train_ai_model(df):
 
 # --- واجهة تسجيل الدخول ---
 def login_page():
-    show_university_logo()
     st.markdown("<h2 style='text-align:center; color:#004a87;'>قسم تحليل البيانات والذكاء الاصطناعي</h2>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>🔐 تسجيل الدخول للنظام الذكي</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
@@ -97,7 +97,7 @@ def teacher_dashboard():
             c3.metric("طلاب في منطقة الخطر", at_risk)
 
             # --- Sidebar Navigation ---
-            page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"], index=0, format_func=lambda x: f"  {x}")
+            page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"], index=0)
             if page == "ملخص AI":
                 st.subheader("ملخص AI")
                 weak_subjects = df[['Math','Physics','Chemistry']].mean().sort_values().head(3).index.tolist()
@@ -146,29 +146,11 @@ def student_dashboard():
             data = student_row.iloc[0]
             subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
 
-            # --- المعلومات الأساسية ---
-            st.subheader(f"مرحباً بك، {data['Name']}")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.write(f"**درجة الاختبار:** {data['Grade']:.1f}%")
-                st.write(f"**نسبة الحضور:** {data['Attendance']}%")
-            with col2:
-                st.subheader("توقعات AI")
-                prob = data['Success_Probability']
-                st.metric("احتمالية النجاح", f"{prob:.1f}%")
-                if prob<50: st.error("⚠️ أنت في منطقة الخطر الأكاديمي!")
-                else: st.success("✅ أنت على الطريق الصحيح للنجاح!")
+            # --- Sidebar Navigation ---
+            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة", "مخطط دائري 1", "مخطط دائري 2"], index=0)
 
-            # --- مخطط دائري صغير أسفل المعلومات مباشرة ---
-            st.subheader("توزيع درجات المواد")
-            fig_pie_inline = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
-                                    title="توزيع درجات المواد")
-            st.plotly_chart(fig_pie_inline, use_container_width=True)
-
-            # --- Sidebar Navigation منفصلة ---
-            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة", "مخطط دائري"], index=0)
             if page == "درجات المواد":
-                st.subheader("درجات المواد")
+                st.subheader("درجاتك في المواد")
                 st.dataframe(data[subject_cols])
             elif page == "المعدل العام والتقدير":
                 overall_percentage = student_row[subject_cols].mean(axis=1).iloc[0]
@@ -180,8 +162,8 @@ def student_dashboard():
                 st.subheader("تقديرك العام")
                 st.metric(label="المعدل العام", value=f"{overall_percentage:.1f}% - {grade_letter}")
             elif page == "توقعات AI":
-                st.subheader("توقعات الذكاء الاصطناعي")
                 prob = data['Success_Probability']
+                st.subheader("توقعات الذكاء الاصطناعي")
                 st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
                 if prob<50: st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
                 else: st.success("أنت تسير في الطريق الصحيح للنجاح!")
@@ -201,11 +183,17 @@ def student_dashboard():
                 else:
                     plan.append("- استمر على نفس المستوى مع مراجعة يومية خفيفة")
                 for p in plan: st.write(p)
-            elif page == "مخطط دائري":
+            elif page == "مخطط دائري 1":
                 st.subheader("مخطط توزيع درجات المواد")
-                fig_pie = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
-                                 title="توزيع درجاتك في المواد")
-                st.plotly_chart(fig_pie, use_container_width=True)
+                fig_pie1 = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
+                                  title="مخطط دائري 1: توزيع درجاتك")
+                st.plotly_chart(fig_pie1, use_container_width=True)
+            elif page == "مخطط دائري 2":
+                st.subheader("مخطط توزيع درجات المواد 2")
+                fig_pie2 = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
+                                  title="مخطط دائري 2: توزيع درجاتك")
+                st.plotly_chart(fig_pie2, use_container_width=True)
+
         else:
             st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
