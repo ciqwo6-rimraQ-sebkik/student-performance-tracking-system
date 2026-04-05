@@ -6,15 +6,11 @@ from sklearn.ensemble import RandomForestClassifier
 # 1. إعدادات الصفحة العامة
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
 
-# --- شعار الجامعة من المشروع ---
+# --- شعار الجامعة في المنتصف ---
 def show_university_logo():
-    try:
-        st.image("logo.png", width=180)  # يستخدم الملف المحلي
-    except:
-        st.warning("لم يتمكن النظام من تحميل شعار الجامعة")
-
     st.markdown("""
-        <div style='text-align:center; margin-top:5px;'>
+        <div style='text-align:center;'>
+            <img src='logo.png' width='180'>
             <p style='font-size:18px; color:#004a87; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
             <p style='font-size:16px; color:#b7934b; margin:0;'>نسخة تجريبية</p>
         </div>
