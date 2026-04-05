@@ -12,7 +12,6 @@ st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذك
 LOGO_FILE_URL = "https://github.com/USERNAME/REPO/raw/main/logo.png"  # ضع رابط الملف هنا
 
 def show_university_logo():
-    # تحميل الملف من GitHub
     try:
         response = requests.get(LOGO_FILE_URL)
         logo_bytes = BytesIO(response.content)
@@ -20,7 +19,6 @@ def show_university_logo():
     except:
         st.warning("لم يتمكن النظام من تحميل شعار الجامعة")
 
-    # النصوص تحت الشعار
     st.markdown("""
         <div style='text-align:center; margin-top:5px;'>
             <p style='font-size:18px; color:#004a87; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
@@ -93,19 +91,25 @@ def teacher_dashboard():
                                  title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي",
                                  color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"})
                 st.plotly_chart(fig, use_container_width=True)
+            
             with t2:
-                # تلوين الاحتمالية مباشرة بدون matplotlib
-                def color_prob(val):
-                    if val >= 75:
+                st.subheader("الجدول التفصيلي")
+                
+                # تحويل عمود Success_Probability لألوان HTML
+                def color_prob_html(prob):
+                    if prob >= 75:
                         color = '#4CAF50'  # أخضر داكن
-                    elif val >= 50:
+                    elif prob >= 50:
                         color = '#CDDC39'  # أصفر فاتح
                     else:
                         color = '#F44336'  # أحمر
-                    return f'background-color: {color}; color: white; text-align:center'
+                    return f'<span style="background-color:{color}; color:white; padding:2px 5px; border-radius:3px">{prob:.1f}%</span>'
                 
-                styled_df = df[['Student_ID','Name','Grade','Attendance','Success_Probability','AI_Status']].style.applymap(color_prob, subset=['Success_Probability'])
-                st.dataframe(styled_df)
+                df_display = df.copy()
+                df_display['Success_Probability'] = df_display['Success_Probability'].apply(color_prob_html)
+                
+                # عرض الجدول بألوان
+                st.write(df_display.to_html(escape=False, index=False), unsafe_allow_html=True)
         else:
             st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
 
