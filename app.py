@@ -94,7 +94,18 @@ def teacher_dashboard():
                                  color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"})
                 st.plotly_chart(fig, use_container_width=True)
             with t2:
-                st.dataframe(df.style.background_gradient(subset=['Success_Probability'], cmap='RdYlGn'))
+                # تلوين الاحتمالية مباشرة بدون matplotlib
+                def color_prob(val):
+                    if val >= 75:
+                        color = '#4CAF50'  # أخضر داكن
+                    elif val >= 50:
+                        color = '#CDDC39'  # أصفر فاتح
+                    else:
+                        color = '#F44336'  # أحمر
+                    return f'background-color: {color}; color: white; text-align:center'
+                
+                styled_df = df[['Student_ID','Name','Grade','Attendance','Success_Probability','AI_Status']].style.applymap(color_prob, subset=['Success_Probability'])
+                st.dataframe(styled_df)
         else:
             st.error("الملف يجب أن يحتوي على الأعمدة: Student_ID, Name, Grade, Attendance")
 
