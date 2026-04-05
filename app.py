@@ -25,13 +25,13 @@ def show_university_logo():
     try:
         with open("logo.png", "rb") as f:
             logo_bytes = BytesIO(f.read())
-        st.sidebar.image(logo_bytes, width=150, use_column_width=False)
+        st.sidebar.image(logo_bytes, width=180)
     except:
         st.sidebar.warning("لم يتمكن النظام من تحميل شعار الجامعة")
 
     st.sidebar.markdown("""
         <div style='text-align:center; margin-top:5px;'>
-            <p style='font-size:16px; color:#333333; margin:2px 0; background-color:#b7934b; padding:2px 5px; border-radius:5px;'>نسخة تجريبية</p>
+            <p style='font-size:16px; color:#ffffff; margin:2px 0; background-color:#b7934b; padding:2px 5px; border-radius:5px;'>نسخة تجريبية</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -130,7 +130,7 @@ def teacher_dashboard():
         else:
             st.error("الملف يجب أن يحتوي على جميع الأعمدة المطلوبة")
 
-# --- واجهة الطالب ---
+# --- واجهة الطالب مع مخطط دائري أسفل جدول المواد ---
 def student_dashboard():
     show_university_logo()
     st.title("ملف الطالب الشخصي")
@@ -145,13 +145,24 @@ def student_dashboard():
         if not student_row.empty:
             data = student_row.iloc[0]
             subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
-
-            # --- Sidebar Navigation ---
-            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة", "مخطط دائري 1", "مخطط دائري 2"], index=0)
+            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة"], index=0)
 
             if page == "درجات المواد":
                 st.subheader("درجاتك في المواد")
                 st.dataframe(data[subject_cols])
+
+                # --- مخطط دائري أسفل جدول المواد ---
+                st.subheader("مخطط نسب المواد")
+                values = [data[sub] for sub in subject_cols]
+                fig_pie = px.pie(
+                    names=subject_cols,
+                    values=values,
+                    title="نسبة كل مادة من مجموع درجاتك",
+                    hole=0.4,  # شكل دونات
+                    textinfo='percent+label',
+                )
+                st.plotly_chart(fig_pie, use_container_width=True)
+
             elif page == "المعدل العام والتقدير":
                 overall_percentage = student_row[subject_cols].mean(axis=1).iloc[0]
                 if overall_percentage >= 90: grade_letter = "امتياز"
@@ -161,12 +172,14 @@ def student_dashboard():
                 else: grade_letter = "ضعيف"
                 st.subheader("تقديرك العام")
                 st.metric(label="المعدل العام", value=f"{overall_percentage:.1f}% - {grade_letter}")
+
             elif page == "توقعات AI":
                 prob = data['Success_Probability']
                 st.subheader("توقعات الذكاء الاصطناعي")
                 st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
-                if prob<50: st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
+                if prob < 50: st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
                 else: st.success("أنت تسير في الطريق الصحيح للنجاح!")
+
             elif page == "خطة المذاكرة":
                 st.subheader("خطة المذاكرة الذكية")
                 plan = []
@@ -183,17 +196,6 @@ def student_dashboard():
                 else:
                     plan.append("- استمر على نفس المستوى مع مراجعة يومية خفيفة")
                 for p in plan: st.write(p)
-            elif page == "مخطط دائري 1":
-                st.subheader("مخطط توزيع درجات المواد")
-                fig_pie1 = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
-                                  title="مخطط دائري 1: توزيع درجاتك")
-                st.plotly_chart(fig_pie1, use_container_width=True)
-            elif page == "مخطط دائري 2":
-                st.subheader("مخطط توزيع درجات المواد 2")
-                fig_pie2 = px.pie(names=subject_cols, values=[data[sub] for sub in subject_cols],
-                                  title="مخطط دائري 2: توزيع درجاتك")
-                st.plotly_chart(fig_pie2, use_container_width=True)
-
         else:
             st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
