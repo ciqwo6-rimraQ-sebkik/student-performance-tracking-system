@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -46,7 +47,7 @@ def train_ai_model(df):
 # --- واجهة تسجيل الدخول ---
 def login_page():
     show_university_logo()
-    st.markdown("<h2 style='text-align: center;'>🔐 تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='text-align: center;'>تسجيل الدخول للنظام الذكي</h2>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.form("login_form"):
@@ -65,7 +66,7 @@ def login_page():
 # --- واجهة المعلم ---
 def teacher_dashboard():
     show_university_logo()
-    st.title("👨‍🏫 لوحة تحكم المعلم (التحليل الذكي)")
+    st.title("لوحة تحكم المعلم")
 
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
@@ -80,7 +81,7 @@ def teacher_dashboard():
             st.session_state['data'] = df
 
             # Sidebar Navigation
-            page = st.sidebar.radio("📌 اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"])
+            page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"])
             container_style = """
             <div style='background-color:#f0f4ff; padding:20px; border-radius:10px; border:2px solid #004a87'>
             """
@@ -92,15 +93,15 @@ def teacher_dashboard():
                 at_risk = len(df[df['Success_Probability']<50])
                 passing = total_students - at_risk
                 weak_subjects = df[['Math','Physics','Chemistry']].mean().sort_values().head(3).index.tolist()
-                st.subheader("🤖 ملخص AI")
-                st.write(f"✅ الطلاب المتوقع نجاحهم: {passing}")
-                st.write(f"⚠️ الطلاب المعرضين للخطر: {at_risk}")
-                st.write(f"📌 أكثر المواد ضعفًا: {', '.join(weak_subjects)}")
+                st.subheader("ملخص AI")
+                st.write(f"الطلاب المتوقع نجاحهم: {passing}")
+                st.write(f"الطلاب المعرضين للخطر: {at_risk}")
+                st.write(f"أكثر المواد ضعفًا: {', '.join(weak_subjects)}")
                 st.markdown(container_end, unsafe_allow_html=True)
 
             elif page == "جدول الطلاب":
                 st.markdown(container_style, unsafe_allow_html=True)
-                st.subheader("📋 الجدول التفصيلي")
+                st.subheader("الجدول التفصيلي")
                 df_display = df.copy()
                 def color_prob_html(prob):
                     if prob>=75: color='#4CAF50'
@@ -113,17 +114,17 @@ def teacher_dashboard():
 
             elif page == "الرسوم البيانية":
                 st.markdown(container_style, unsafe_allow_html=True)
-                st.subheader("📊 الرسوم البيانية")
+                st.subheader("الرسوم البيانية")
                 fig_scatter = px.scatter(df, x="Attendance", y="Grade", color="AI_Status",
                                          size="Success_Probability", hover_name="Name",
                                          color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"},
-                                         title="توزيع الطلاب حسب تنبؤات الذكاء الاصطناعي")
+                                         title="توزيع الطلاب حسب AI")
                 st.plotly_chart(fig_scatter, use_container_width=True)
                 status_counts = df['AI_Status'].value_counts()
                 fig_pie = px.pie(names=status_counts.index, values=status_counts.values,
                                  color=status_counts.index,
                                  color_discrete_map={"ناجح متوقع":"#004a87","خطر تعثر":"#b7934b"},
-                                 title="نسبة الطلاب (ناجح متوقع vs خطر تعثر)")
+                                 title="نسبة الطلاب حسب الحالة")
                 st.plotly_chart(fig_pie, use_container_width=True)
                 st.markdown(container_end, unsafe_allow_html=True)
         else:
@@ -132,7 +133,7 @@ def teacher_dashboard():
 # --- واجهة الطالب ---
 def student_dashboard():
     show_university_logo()
-    st.title("🎓 ملف الطالب الشخصي")
+    st.title("ملف الطالب الشخصي")
 
     if st.sidebar.button("تسجيل الخروج"):
         st.session_state['logged_in'] = False
@@ -146,8 +147,7 @@ def student_dashboard():
             data = student_row.iloc[0]
             subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
 
-            # Sidebar Navigation
-            page = st.sidebar.radio("📌 اختر القسم:", ["درجات المواد", "المعدل العام + التقدير", "توقعات AI", "خطة المذاكرة"])
+            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة"])
             container_style = """
             <div style='background-color:#f0f4ff; padding:20px; border-radius:10px; border:2px solid #004a87'>
             """
@@ -155,7 +155,7 @@ def student_dashboard():
 
             if page == "درجات المواد":
                 st.markdown(container_style, unsafe_allow_html=True)
-                st.subheader("📚 درجاتك في المواد")
+                st.subheader("درجاتك في المواد")
                 st.dataframe(data[subject_cols])
                 fig_bar = px.bar(x=subject_cols, y=[data[sub] for sub in subject_cols],
                                  labels={'x':'المادة','y':'الدرجة'},
@@ -166,7 +166,7 @@ def student_dashboard():
                 st.plotly_chart(fig_pie, use_container_width=True)
                 st.markdown(container_end, unsafe_allow_html=True)
 
-            elif page == "المعدل العام + التقدير":
+            elif page == "المعدل العام والتقدير":
                 st.markdown(container_style, unsafe_allow_html=True)
                 overall_percentage = student_row[subject_cols].mean(axis=1).iloc[0]
                 if overall_percentage >= 90: grade_letter = "امتياز"
@@ -174,14 +174,14 @@ def student_dashboard():
                 elif overall_percentage >= 70: grade_letter = "جيد"
                 elif overall_percentage >= 60: grade_letter = "مقبول"
                 else: grade_letter = "ضعيف"
-                st.subheader("📌 تقديرك العام")
+                st.subheader("تقديرك العام")
                 st.metric(label="المعدل العام", value=f"{overall_percentage:.1f}% - {grade_letter}")
                 st.markdown(container_end, unsafe_allow_html=True)
 
             elif page == "توقعات AI":
                 st.markdown(container_style, unsafe_allow_html=True)
                 prob = data['Success_Probability']
-                st.subheader("🤖 توقعات الذكاء الاصطناعي")
+                st.subheader("توقعات الذكاء الاصطناعي")
                 st.metric("احتمالية النجاح المتوقعة", f"{prob:.1f}%")
                 if prob<50: st.error("تنبيه: أنت في منطقة الخطر الأكاديمي!")
                 else: st.success("أنت تسير في الطريق الصحيح للنجاح!")
@@ -189,20 +189,20 @@ def student_dashboard():
 
             elif page == "خطة المذاكرة":
                 st.markdown(container_style, unsafe_allow_html=True)
-                st.subheader("📅 خطة المذاكرة الذكية")
+                st.subheader("خطة المذاكرة الذكية")
                 plan = []
                 weak_subjects = [sub for sub in subject_cols if data[sub]<60]
                 if weak_subjects:
                     for sub in weak_subjects:
-                        plan.append(f"📌 ركّز على مادة {sub} لمدة ساعة يوميًا")
+                        plan.append(f"- ركّز على مادة {sub} لمدة ساعة يوميًا")
                 if data['Attendance']<75:
-                    plan.append("📍 احرص على حضور جميع المحاضرات القادمة")
+                    plan.append("- احرص على حضور جميع المحاضرات القادمة")
                 if 'Engagement' in data and data['Engagement']<50:
-                    plan.append("📍 شارك في الكلاس واسأل الأسئلة")
+                    plan.append("- شارك في الكلاس واسأل الأسئلة")
                 if data['Success_Probability']<50:
-                    plan.append("🔥 خصص 3-4 ساعات يوميًا للمذاكرة المكثفة")
+                    plan.append("- خصص 3-4 ساعات يوميًا للمذاكرة المكثفة")
                 else:
-                    plan.append("✅ استمر على نفس المستوى مع مراجعة يومية خفيفة")
+                    plan.append("- استمر على نفس المستوى مع مراجعة يومية خفيفة")
                 for p in plan: st.write(p)
                 st.markdown(container_end, unsafe_allow_html=True)
 
