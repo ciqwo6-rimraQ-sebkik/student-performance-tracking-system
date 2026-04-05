@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from sklearn.ensemble import RandomForestClassifier
+from io import BytesIO
 
 # --- إعدادات الصفحة ---
 st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذكي", layout="wide")
@@ -10,20 +11,27 @@ st.set_page_config(page_title="نظام التنبؤ الأكاديمي الذك
 # --- ألوان رسمية ---
 st.markdown("""
 <style>
-body {background-color: #e6f0fa;}
-h1, h2, h3, h4 {color: #004a87;}
+body {background-color: #fdf7e3;} /* خلفية فاتحة ذهبي فاتح */
+h1, h2, h3, h4 {color: #b7934b;} /* لون ذهبي للشعارات والعناوين */
+.stButton>button {background-color:#b7934b; color:white; border-radius:8px; width:100%; padding:0.5em;}
+.sidebar .sidebar-content {background-color: #004a87; color:white; border-radius:8px; padding:10px;}
 .stMetric {background-color: white !important; border: 2px solid #004a87; border-radius: 8px; padding: 10px;}
-.stButton>button {background-color: #b7934b; color: white; border-radius: 8px; padding: 0.5em 1em;}
 </style>
 """, unsafe_allow_html=True)
 
-# --- شعار الجامعة في المنتصف ---
+# --- شعار الجامعة على اليسار أعلى الصفحة ---
 def show_university_logo():
-    st.markdown("""
-        <div style='text-align:center; margin-top:10px;'>
-            <img src="logo.png" width="180" style="display:block; margin-left:auto; margin-right:auto;">
-            <p style='font-size:18px; color:#004a87; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
-            <p style='font-size:16px; color:#b7934b; margin:0;'>نسخة تجريبية</p>
+    try:
+        with open("logo.png", "rb") as f:
+            logo_bytes = BytesIO(f.read())
+        st.sidebar.image(logo_bytes, width=120)
+    except:
+        st.sidebar.warning("لم يتمكن النظام من تحميل شعار الجامعة")
+
+    st.sidebar.markdown("""
+        <div style='text-align:center; margin-top:5px;'>
+            <p style='font-size:16px; color:#b7934b; margin:2px 0;'>قسم تحليل البيانات والذكاء الاصطناعي</p>
+            <p style='font-size:14px; color:white; margin:0;'>نسخة تجريبية</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -80,21 +88,27 @@ def teacher_dashboard():
             df = train_ai_model(df)
             st.session_state['data'] = df
 
-            # Sidebar Navigation
-            page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"])
+            # --- إحصائيات سريعة ---
+            total_students = len(df)
+            avg_grade = df['Grade'].mean()
+            at_risk = len(df[df['Success_Probability'] < 50])
+            c1, c2, c3 = st.columns(3)
+            c1.metric("إجمالي الطلاب", total_students)
+            c2.metric("متوسط الدرجات", f"{avg_grade:.1f}%")
+            c3.metric("طلاب في منطقة الخطر", at_risk)
+
+            # --- Sidebar Navigation ---
+            page = st.sidebar.radio("اختر القسم:", ["ملخص AI", "جدول الطلاب", "الرسوم البيانية"], index=0)
             container_style = """
-            <div style='background-color:#f0f4ff; padding:20px; border-radius:10px; border:2px solid #004a87'>
+            <div style='background-color:#fff2cc; padding:20px; border-radius:10px; border:2px solid #b7934b;'>
             """
             container_end = "</div>"
 
             if page == "ملخص AI":
                 st.markdown(container_style, unsafe_allow_html=True)
-                total_students = len(df)
-                at_risk = len(df[df['Success_Probability']<50])
-                passing = total_students - at_risk
                 weak_subjects = df[['Math','Physics','Chemistry']].mean().sort_values().head(3).index.tolist()
                 st.subheader("ملخص AI")
-                st.write(f"الطلاب المتوقع نجاحهم: {passing}")
+                st.write(f"الطلاب المتوقع نجاحهم: {total_students - at_risk}")
                 st.write(f"الطلاب المعرضين للخطر: {at_risk}")
                 st.write(f"أكثر المواد ضعفًا: {', '.join(weak_subjects)}")
                 st.markdown(container_end, unsafe_allow_html=True)
@@ -147,9 +161,9 @@ def student_dashboard():
             data = student_row.iloc[0]
             subject_cols = ['Math','Science','English','Physics','Chemistry','Biology','Computer']
 
-            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة"])
+            page = st.sidebar.radio("اختر القسم:", ["درجات المواد", "المعدل العام والتقدير", "توقعات AI", "خطة المذاكرة"], index=0)
             container_style = """
-            <div style='background-color:#f0f4ff; padding:20px; border-radius:10px; border:2px solid #004a87'>
+            <div style='background-color:#fff2cc; padding:20px; border-radius:10px; border:2px solid #b7934b;'>
             """
             container_end = "</div>"
 
@@ -205,7 +219,6 @@ def student_dashboard():
                     plan.append("- استمر على نفس المستوى مع مراجعة يومية خفيفة")
                 for p in plan: st.write(p)
                 st.markdown(container_end, unsafe_allow_html=True)
-
         else:
             st.warning("عذراً، لم يتم العثور على بياناتك في الملف الذي رفعه المعلم.")
     else:
